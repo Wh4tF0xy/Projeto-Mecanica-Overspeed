@@ -1,6 +1,8 @@
 # Projeto-Mecanica-Overspeed
 Projeto Bot | Mecanica Overspeed | Cidade Nobre #01
 
+⚠️Projeto nao esta completo⚠️
+
 ✅ Uso do Bot
 • O bot destina-se exclusivamente para uso dentro do servidor da mecanica em que foi autorizado.
 • O bot fornece funcionalidades como envio de mensagens privadas, avisos, cobranças e organização de eventos conforme configurado pelos administradores do servidor.
