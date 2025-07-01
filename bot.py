@@ -1,4 +1,5 @@
 import discord
+import os
 import aiohttp
 import json
 from discord.ext import tasks
@@ -9,8 +10,8 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="/", intents=intents)
-GUILD_ID= """""""Seu id""""""" #Guild_ID
+bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
+GUILD_ID=******SEU ID******* #Guild_ID
 FIVEM_URL = "http://nobre.santagroup.gg:30120/info.json"
 
 async def get_fivem_name():
@@ -53,14 +54,18 @@ async def on_ready():
     try:
         await bot.change_presence(activity=discord.Game(name=f"{nome}"))
         print(f"✅ Online — status definido para: {nome}")      
-        guild = discord.Object(id="""""""""""Seu Id""""""""""""")  # ID do seu servidor para sincronização local
+        guild = discord.Object(id=*******SEU ID******)  # ID do seu servidor para sincronização local
         synced = await bot.tree.sync(guild=guild)
         print(f"🔧 Comandos sincronizados: {len(synced)}")
     except Exception as e:
         print(f"Erro ao sincronizar comandos: {e}")
         nome = await get_fivem_name()
 
-@bot.tree.command(name="dm", description="Envia uma mensagem privada para todos que possuem o cargo mencionado.")
+def is_admin(interaction: discord.Interaction) -> bool:
+    admin_role = discord.utils.get(interaction.guild.roles, name="Admin")
+    return admin_role in interaction.user.roles
+
+@bot.tree.command(name="dm", description="📤Envia uma mensagem privada para todos que possuem o cargo mencionado.")
 @app_commands.describe(
     cargo="Cargo que deve receber a mensagem",
     mensagem="Mensagem a ser enviada"
@@ -89,7 +94,7 @@ async def dm(interaction: discord.Interaction, cargo: discord.Role, mensagem: st
 
     await interaction.followup.send(f"✅ Mensagem enviada para {enviados} membros. ❌ Falhou em {erros} casos.")
 
-@bot.tree.command(name="cobranca", description="Envia mensagem de cobrança para cargo.")
+@bot.tree.command(name="cobranca", description="💸Envia mensagem de cobrança para cargo.")
 @app_commands.describe(
     cargo="Cargo que deve receber a mensagem"
 )
@@ -135,7 +140,7 @@ async def cobranca(interaction: discord.Interaction, cargo: discord.Role):
 
     await interaction.followup.send(f"✅ Mensagem de cobrança enviada para {enviados} membros. ❌ Falhou em {erros} casos.")
 
-@bot.tree.command(name="reuniao", description="Envia mensagem de reunião para cargo, com dia e hora customizados.")
+@bot.tree.command(name="reuniao", description="⏰Envia mensagem de reunião para cargo, com dia e hora customizados.")
 @app_commands.describe(
     cargo="Cargo que deve receber a mensagem",
     dia="Dia da reunião (ex: segunda-feira)",
@@ -182,7 +187,7 @@ async def reuniao(interaction: discord.Interaction, cargo: discord.Role, dia: st
 
     await interaction.followup.send(f"✅ Mensagem de reunião enviada para {enviados} membros. ❌ Falhou em {erros} casos.")
 
-@bot.tree.command(name="rei", description="Envia mensagem do evento REI DO CRIME 2.0 para o cargo.")
+@bot.tree.command(name="rei", description="👑Envia mensagem do evento REI DO CRIME 2.0 para o cargo.")
 @app_commands.describe(
     cargo="Cargo que deve receber a mensagem"
 )
@@ -245,7 +250,7 @@ async def rei(interaction: discord.Interaction, cargo: discord.Role):
 
     await interaction.followup.send(f"✅ Mensagem REI DO CRIME 2.0 enviada para {enviados} membros. ❌ Falhou em {erros} casos.")
 
-@bot.tree.command(name="ajuda", description="Mostra os comandos disponíveis do bot.")
+@bot.tree.command(name="ajuda", description="📬Mostra os comandos disponíveis do bot.")
 async def ajuda(interaction: discord.Interaction):
     embed = discord.Embed(
         title="📬 Comandos do Bot",
@@ -278,6 +283,21 @@ async def ajuda(interaction: discord.Interaction):
         inline=False
     )
     embed.add_field(
+        name="/advertir usuario motivo valor pix nome",
+        value="🚨Aplica uma advertência a um usuário no canal e no privado:\n ⚠️ Use este comando apenas no canal de advertências.",
+        inline=False
+    )
+    embed.add_field(
+        name=" /resetaradv usuario:",
+        value="🚨Resetar advertencias de um usuario(ex: 3/3 advertencia rebaixar usuario)",
+        inline=False
+    )
+    embed.add_field(
+        name="/limpar quantidade",
+        value="🧹 Apaga uma quantidade de mensagens no canal atual (máx 52).",
+        inline=False
+    )
+    embed.add_field(
         name="/ajuda",
         value="📜Mostra esta mensagem de ajuda.",
         inline=False
@@ -292,11 +312,11 @@ async def ajuda(interaction: discord.Interaction):
         value="⛔Mostra a lista das cláusulas de advertências.",
         inline=False
     )
-    
+        
     embed.set_footer(text="</> Desenvolvido por Guilherme#191344")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="limparcache", description="Limpa e ressincroniza os comandos do bot.")
+@bot.tree.command(name="limparcache", description="🔃Limpa e ressincroniza os comandos do bot.")
 async def limparcache(interaction: discord.Interaction):
     if not is_admin(interaction):
         await interaction.response.send_message("❌ Você não tem permissão para usar este comando.", ephemeral=True)
@@ -544,6 +564,175 @@ async def clausulas_command(ctx):
 
     embed.set_footer(text="</> Desenvolvido por Guilherme#191344")
     await ctx.send(embed=embed)
+    
+ADVERTENCIAS_FILE = "advertencias.json"
+
+def carregar_advertencias():
+    if not os.path.exists(ADVERTENCIAS_FILE):
+        with open(ADVERTENCIAS_FILE, "w") as f:
+            json.dump({}, f)
+
+    try:
+        with open(ADVERTENCIAS_FILE, "r") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        # Corrige arquivo corrompido/vazio
+        with open(ADVERTENCIAS_FILE, "w") as f:
+            json.dump({}, f)
+        return {}
+
+def salvar_advertencias(data):
+    with open(ADVERTENCIAS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def is_admin(interaction: discord.Interaction) -> bool:
+    return interaction.user.guild_permissions.administrator
+
+
+
+# COMANDO /ADVERTIR
+ALLOWED_ROLES = [ID CARGO]  # IDs dos cargos permitidos
+
+def can_use_command(interaction: discord.Interaction) -> bool:
+    if is_admin(interaction):
+        return True
+    user_roles = [role.id for role in interaction.user.roles]
+    for allowed_role in ALLOWED_ROLES:
+        if allowed_role in user_roles:
+            return True
+    return False
+
+@bot.tree.command(
+    name="advertir",
+    description="🚨 Envia uma advertência a um usuário.",
+    guild=discord.Object(id=*****SEU ID******)
+)
+@app_commands.describe(
+    usuario="Usuário a ser advertido",
+    motivo="Motivo da advertência (ex: OBS. 10 - Trabalho e conduta nas baias)",
+    valor="Valor da multa (ex: R$500kk + 1 Advertencia)",
+    pix="Chave PIX para pagamento",
+    nome="Nome de quem aplicou a advertência"
+)
+async def advertir(
+    interaction: discord.Interaction,
+    usuario: discord.Member,
+    motivo: str,
+    valor: str,
+    pix: str,
+    nome: str
+):
+    if not can_use_command(interaction):
+        await interaction.response.send_message(
+            "❌ Você não tem permissão para usar este comando.",
+            ephemeral=True
+        )
+        return
+
+    advertencias_data = carregar_advertencias()
+    user_id = str(usuario.id)
+    quantidade = advertencias_data.get(user_id, 0) + 1
+    advertencias_data[user_id] = quantidade
+    salvar_advertencias(advertencias_data)
+
+    embed = discord.Embed(
+        title="🚨 Advertência Recebida",
+        description="Você foi advertido no servidor. Veja os detalhes abaixo:",
+        color=discord.Color.orange()
+    )
+    embed.add_field(name="👤 Usuário Advertido", value=usuario.mention, inline=False)
+    embed.add_field(name="📝 Motivo", value=motivo, inline=False)
+    embed.add_field(name="⚠️ Advertência", value=f"{quantidade}/3", inline=True)
+    embed.add_field(name="💰 Valor da advertencia", value=valor, inline=True)
+    embed.add_field(name="🔑 Chave PIX", value=pix, inline=False)
+    embed.add_field(
+        name="📸 Comprovante",
+        value="Envie o print com o valor em 💲・pagamentos-multas",
+        inline=False
+    )
+    embed.set_footer(text=f"📌 Advertido por: {nome or interaction.user.display_name}")
+
+    await interaction.response.send_message(embed=embed)
+
+    try:
+        await usuario.send(
+            content="📩 Você recebeu uma advertência no servidor. Veja os detalhes:",
+            embed=embed
+        )
+    except Exception as e:
+        print(f"❗ Erro ao enviar DM para {usuario}: {e}")
+        await interaction.followup.send(
+            "⚠️ Não foi possível enviar a advertência por DM.",
+            ephemeral=True
+        )
+
+# COMANDO /RESETARADV
+@bot.tree.command(
+    name="resetaradv",
+    description="🔄 Reseta a quantidade de advertências de um usuário.",
+    guild=discord.Object(id=***SEU ID*****)
+)
+@app_commands.describe(
+    usuario="Usuário que terá as advertências resetadas"
+)
+async def resetaradv(interaction: discord.Interaction, usuario: discord.Member):
+    if not is_admin(interaction):
+        await interaction.response.send_message(
+            "❌ Você não tem permissão para usar este comando.",
+            ephemeral=True
+        )
+        return
+
+    advertencias_data = carregar_advertencias()
+    user_id = str(usuario.id)
+
+    if user_id in advertencias_data:
+        advertencias_data[user_id] = 0
+        salvar_advertencias(advertencias_data)
+        await interaction.response.send_message(
+            f"✅ As advertências de {usuario.mention} foram resetadas com sucesso.",
+            ephemeral=False
+        )
+    else:
+        await interaction.response.send_message(
+            f"ℹ️ O usuário {usuario.mention} não possui advertências registradas.",
+            ephemeral=True
+        )
+
+@bot.tree.command(
+    name="limpar",
+    description="🧹 Limpa mensagens do canal atual.",
+    guild=discord.Object(id=***SEU ID****)
+)
+@app_commands.describe(
+    quantidade="Quantidade de mensagens para apagar (máximo: 50)"
+)
+async def limpar(interaction: discord.Interaction, quantidade: int):
+    if not is_admin(interaction):
+        await interaction.response.send_message(
+            "❌ Você não tem permissão para usar este comando.",
+            ephemeral=True
+        )
+        return
+
+    if quantidade < 1 or quantidade > 50:
+        await interaction.response.send_message(
+            "⚠️ Você deve escolher entre 1 e 50 mensagens.",
+            ephemeral=True
+        )
+        return
+
+    # Envia resposta imediata para evitar erro 404 (Unknown interaction)
+    await interaction.response.defer(thinking=False)
+
+    # Apaga mensagens (incluindo a do comando, por isso +1)
+    await interaction.channel.purge(limit=quantidade + 1)
+
+    # Mensagem de confirmação
+    await interaction.followup.send(
+        f"✅ {quantidade} mensagens apagadas por {interaction.user.mention}.",
+        ephemeral=False
+    )
 
 # 🚀 Iniciar o bot
-bot.run('Token id')
+bot.run('***SEU ID****')
